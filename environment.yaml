@@ -3,11 +3,11 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - pandas
+  - pandas<=2.0.3
   - rdkit
   - h5py
   - tqdm
   - scikit-learn
-  - xgboost
+  - xgboost=3.0.2
   - brs_utils>=1.26.0
   - rplibs>=6.9.3
