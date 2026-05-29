@@ -20,20 +20,6 @@ def entry_point():
 
     logger = init(parser, args)
 
-    # if len(args.pathways) == 1:
-    #   if args.outfile is None or args.outfile == '':
-    #     logger.error('Option --outfile has to be set in case of single input pathway, exiting...')
-    #     exit(1)
-
-    # pathways = []
-    # for pathway in args.pathways:
-    #     pathways.append(
-    #         rpPathway(
-    #             infile=pathway,
-    #             logger=logger
-    #         )
-    #     )
-
     pathway = rpPathway(infile=args.infile, logger=logger)
 
     try:
