@@ -1,8 +1,16 @@
 # Changelog
 
+## [6.8.2](https://github.com/brsynth/rpScore/tree/6.8.2) (2026-05-29)
+
+[Full Changelog](https://github.com/brsynth/rpScore/compare/6.8.1...6.8.2)
+
 ## [6.8.1](https://github.com/brsynth/rpScore/tree/6.8.1) (2026-05-29)
 
 [Full Changelog](https://github.com/brsynth/rpScore/compare/6.8.0...6.8.1)
+
+**Merged pull requests:**
+
+- trigger [\#1](https://github.com/brsynth/rpScore/pull/1) ([breakthewall](https://github.com/breakthewall))
 
 ## [6.8.0](https://github.com/brsynth/rpScore/tree/6.8.0) (2026-05-29)
 
