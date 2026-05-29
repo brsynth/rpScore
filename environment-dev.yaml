@@ -1,4 +1,4 @@
-name: rpfba
+name: rpscore
 channels:
   - conda-forge
   - nodefaults

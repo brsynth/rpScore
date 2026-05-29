@@ -1,7 +1,9 @@
 from os import path as os_path, makedirs as os_makedirs
 from .rpscore import predict_score, ThermoError, FBAError
 from .Args import add_arguments
+from ._version import __version__
 from brs_utils import (
+    init as init_logger,
     build_args_parser,
 )
 from rplibs import rpPathway
@@ -16,9 +18,7 @@ def entry_point():
     )
     args = parser.parse_args()
 
-    from rptools.__main__ import init
-
-    logger = init(parser, args)
+    logger = init_logger(parser, args, __version__)
 
     pathway = rpPathway(infile=args.infile, logger=logger)
 
