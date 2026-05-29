@@ -104,8 +104,8 @@ subdir: osx-64
 <!-- ### rpScore process -->
 **From Python code**
 ```python
-from rptools.rpscore import predict_score
-from rptools.rplibs import rpPathway
+from rpscore import predict_score
+from rplibs import rpPathway
 
 pathway = rpPathway(
     infile='tests/rpscore/data/pathway.xml'
@@ -115,7 +115,7 @@ global_score = predict_score(pathway)
 ```
 **From CLI**
 ```sh
-python -m rptools.rpscore <input_rpsbml> <output_rpsbml>
+python -m rpscore <input_rpsbml> <output_rpsbml>
 ```
 
 ## Tests
