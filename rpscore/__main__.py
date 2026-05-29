@@ -1,38 +1,23 @@
-from typing import (
-    Dict,
-    List
-)
-from logging import (
-    Logger,
-    getLogger
-)
-from os import (
-    path as os_path,
-    makedirs as os_makedirs
-)
-from .rpscore import (
-    predict_score,
-    ThermoError,
-    FBAError
-)
+from os import path as os_path, makedirs as os_makedirs
+from .rpscore import predict_score, ThermoError, FBAError
 from .Args import add_arguments
-from ._version import __version__
 from brs_utils import (
-    init as init_logger,
     build_args_parser,
 )
 from rplibs import rpPathway
 
+
 def entry_point():
-  
+
     parser = build_args_parser(
-        prog = 'rpscore',
-        description = 'Calculate global score by combining all scores (rules, FBA, Thermo)',
-        m_add_args = add_arguments
+        prog="rpscore",
+        description="Calculate global score by combining all scores (rules, FBA, Thermo)",
+        m_add_args=add_arguments,
     )
     args = parser.parse_args()
 
     from rptools.__main__ import init
+
     logger = init(parser, args)
 
     # if len(args.pathways) == 1:
@@ -49,10 +34,7 @@ def entry_point():
     #         )
     #     )
 
-    pathway = rpPathway(
-        infile=args.infile,
-        logger=logger
-    )
+    pathway = rpPathway(infile=args.infile, logger=logger)
 
     try:
         score = predict_score(
@@ -60,7 +42,7 @@ def entry_point():
             # data_train_file=args.data_train_file,
             # models_path=models_path,
             no_of_rxns_thres=args.no_of_rxns_thres,
-            logger=logger
+            logger=logger,
         )
     except ThermoError as e:
         logger.error(e)
@@ -90,10 +72,8 @@ def entry_point():
     # Write pathway into file
     # Create the output directory if not exists
     os_makedirs(os_path.dirname(args.outfile), exist_ok=True)
-    pathway.to_rpSBML().write_to_file(
-        args.outfile
-    )
+    pathway.to_rpSBML().write_to_file(args.outfile)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     entry_point()
