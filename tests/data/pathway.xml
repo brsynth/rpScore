@@ -357,6 +357,7 @@
                   <brsynth:error value="5.336452836371218"/>
                   <brsynth:units value="kilojoule / mole"/>
                 </brsynth:thermo_dG>
+                <brsynth:target_id value="TARGET_0000000001"/>
               </brsynth:brsynth>
             </rdf:BRSynth>
           </rdf:RDF>
