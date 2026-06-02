@@ -37,22 +37,6 @@ def entry_point():
         logger.error(e)
         exit(2)
 
-    # if len(pathways) > 1:
-    #     if not os_path.exists(args.outdir):
-    #         makedirs(args.outdir)
-    #     for i in range(len(pathways)):
-    #         # Write results into the pathway
-    #         pathways[i].set_global_score(
-    #             scores[i]
-    #         )
-    #         # Write pathway into file
-    #         pathways[i].to_rpSBML().write_to_file(
-    #             os_path.join(
-    #                 args.outdir,
-    #                 os_path.basename(args.pathways[i])
-    #             )
-    #         )
-    #     else:
     # Write results into the pathway
     pathway.set_global_score(score)
     # Write pathway into file
