@@ -10,4 +10,4 @@ dependencies:
   - scikit-learn
   - xgboost=3.0.2
   - brs_utils>=1.26.0
-  - rplibs>=6.9.4
+  - rplibs>=6.9.5
