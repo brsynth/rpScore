@@ -4,6 +4,6 @@ Created on Sep 6 2021
 @author: Joan Hérisson, Jean_Loup Faulon
 """
 
-from rpscore.rpscore import predict_score, ThermoError, FBAError
+from rpscore.rpscore import FBAError, ThermoError, predict_score
 
-__all__ = ["predict_score", "ThermoError", "FBAError"]
+__all__ = ["FBAError", "ThermoError", "predict_score"]

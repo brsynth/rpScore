@@ -1,18 +1,21 @@
-from os import path as os_path, remove as remove
+from logging import Logger, getLogger
+from os import path as os_path
+from os import remove
+from pickle import load as pickle_load
+from statistics import mean, stdev
 from sys import exit as sys_exit
 from tempfile import NamedTemporaryFile
-from pandas import DataFrame as pd_DataFrame, read_csv as pd_read_csv
+
 import numpy as np
-from rdkit import Chem, DataStructs
-from logging import Logger, getLogger
-from rdkit.Chem import AllChem
 from h5py import File as h5py_File
-from tqdm import tqdm
-from sklearn.utils import shuffle
-from statistics import mean, stdev
-from xgboost import DMatrix
-from pickle import load as pickle_load
+from pandas import DataFrame as pd_DataFrame
+from pandas import read_csv as pd_read_csv
+from rdkit import Chem, DataStructs
+from rdkit.Chem import AllChem
 from rplibs import rpPathway
+from sklearn.utils import shuffle
+from tqdm import tqdm
+from xgboost import DMatrix
 
 __CURRENT_PATH = os_path.dirname(os_path.abspath(__file__))
 __MODELS_PATH = os_path.join(__CURRENT_PATH, "models")
@@ -151,94 +154,103 @@ def features_encoding(df, flag):
 
     print("Encodining features for the Test set......")
     # temp_f_name = str(uuid4())
-    f = h5py_File(NamedTemporaryFile(delete=True), "w")
     number = rxn_len * no_of_rxns + pathway_len + y_len
-    dset = f.create_dataset(
-        "data", (0, number), dtype="i2", maxshape=(None, number), compression="gzip"
-    )
+    with (
+        NamedTemporaryFile(suffix=".h5") as temp_file,
+        h5py_File(temp_file.name, "w") as f,
+    ):
+        dset = f.create_dataset(
+            "data",
+            (0, number),
+            dtype="i2",
+            maxshape=(None, number),
+            compression="gzip",
+        )
 
-    for row in tqdm(range(len(df))):
-        pathway_rxns = np.array([]).reshape(0, rxn_len * no_of_rxns)
-        rxns_list = []
-        for rxn_no_ in range(no_of_rxns):
+        for row in tqdm(range(len(df))):
+            pathway_rxns = np.array([]).reshape(0, rxn_len * no_of_rxns)
+            rxns_list = []
+            for rxn_no_ in range(no_of_rxns):
 
-            rxn_smiles_index = rxn_no_ * 3
-            rxn_dg_index = (rxn_no_ + 1) * 3 - 2
-            rxn_rule_score_index = (rxn_no_ + 1) * 3 - 1
+                rxn_smiles_index = rxn_no_ * 3
+                rxn_dg_index = (rxn_no_ + 1) * 3 - 2
+                rxn_rule_score_index = (rxn_no_ + 1) * 3 - 1
 
-            if str(df.iloc[row, rxn_smiles_index]) != "0":
-                # print(df.iloc[row , rxn_smiles_index])
-                rxn_smiles = df.iloc[row, rxn_smiles_index]
-                rxn_smiles_list = rxn_smiles.split(">>")
-                # print(len(rxn_smiles_list))
+                if str(df.iloc[row, rxn_smiles_index]) != "0":
+                    # print(df.iloc[row , rxn_smiles_index])
+                    rxn_smiles = df.iloc[row, rxn_smiles_index]
+                    rxn_smiles_list = rxn_smiles.split(">>")
+                    # print(len(rxn_smiles_list))
 
-                if len(rxn_smiles_list) == 2:
+                    if len(rxn_smiles_list) == 2:
 
-                    sub_smiles = rxn_smiles_list[0]
-                    sub_m = Chem.MolFromSmiles(sub_smiles)
-                    # print(m)
-                    if sub_m is not None:
-                        sub_fp = AllChem.GetMorganFingerprintAsBitVect(
-                            sub_m, 2, nBits=2048
-                        )
-                        sub_arr = np.array([])
-                        DataStructs.ConvertToNumpyArray(sub_fp, sub_arr)
-                        sub_fp = sub_arr.reshape(1, -1)
-                    else:
-                        sub_fp = np.zeros((1, 2048))
+                        sub_smiles = rxn_smiles_list[0]
+                        sub_m = Chem.MolFromSmiles(sub_smiles)
+                        # print(m)
+                        if sub_m is not None:
+                            sub_fp = AllChem.GetMorganFingerprintAsBitVect(
+                                sub_m, 2, nBits=2048
+                            )
+                            sub_arr = np.array([])
+                            DataStructs.ConvertToNumpyArray(sub_fp, sub_arr)
+                            sub_fp = sub_arr.reshape(1, -1)
+                        else:
+                            sub_fp = np.zeros((1, 2048))
 
-                    pro_smiles = rxn_smiles_list[1]
-                    pro_m = Chem.MolFromSmiles(pro_smiles)
-                    # print(m)
-                    if pro_m is not None:
+                        pro_smiles = rxn_smiles_list[1]
+                        pro_m = Chem.MolFromSmiles(pro_smiles)
+                        # print(m)
+                        if pro_m is not None:
+                            pro_fp = AllChem.GetMorganFingerprintAsBitVect(
+                                pro_m, 2, nBits=2048
+                            )
+                            pro_arr = np.zeros((1,))
+                            DataStructs.ConvertToNumpyArray(pro_fp, pro_arr)
+                            pro_fp = pro_arr.reshape(1, -1)
+                        else:
+                            pro_fp = np.zeros((1, 2048))
+                        rxn_fp = np.concatenate([sub_fp, pro_fp]).reshape(1, -1)
+
+                    elif len(rxn_smiles_list) < 2:
+
+                        pro_smiles = rxn_smiles_list[0]
+                        # print(pro_smiles)
+                        pro_m = Chem.MolFromSmiles(pro_smiles)
+                        # print(pro_m)
                         pro_fp = AllChem.GetMorganFingerprintAsBitVect(
-                            pro_m, 2, nBits=2048
-                        )
+                            pro_m, 2, nBits=fp_len
+                        )  # JLF: not good !!
                         pro_arr = np.zeros((1,))
                         DataStructs.ConvertToNumpyArray(pro_fp, pro_arr)
-                        pro_fp = pro_arr.reshape(1, -1)
+                        rxn_fp = pro_arr.reshape(1, -1)
                     else:
-                        pro_fp = np.zeros((1, 2048))
-                    rxn_fp = np.concatenate([sub_fp, pro_fp]).reshape(1, -1)
+                        print(
+                            "There is a problem with the number of components in the reaction"
+                        )
 
-                elif len(rxn_smiles_list) < 2:
-
-                    pro_smiles = rxn_smiles_list[0]
-                    # print(pro_smiles)
-                    pro_m = Chem.MolFromSmiles(pro_smiles)
-                    # print(pro_m)
-                    pro_fp = AllChem.GetMorganFingerprintAsBitVect(
-                        pro_m, 2, nBits=fp_len
-                    )  # JLF: not good !!
-                    pro_arr = np.zeros((1,))
-                    DataStructs.ConvertToNumpyArray(pro_fp, pro_arr)
-                    rxn_fp = pro_arr.reshape(1, -1)
                 else:
-                    print(
-                        "There is a problem with the number of components in the reaction"
-                    )
+                    rxn_fp = np.zeros(fp_len).reshape(1, -1)
 
-            else:
-                rxn_fp = np.zeros(fp_len).reshape(1, -1)
+                rxn_dg = df.iloc[row, rxn_dg_index].reshape(1, -1)
+                rxn_rule_score = df.iloc[row, rxn_rule_score_index].reshape(1, -1)
+                rxns_list.extend([rxn_fp, rxn_dg, rxn_rule_score])
+                # print(rxn_rule_score)
 
-            rxn_dg = df.iloc[row, rxn_dg_index].reshape(1, -1)
-            rxn_rule_score = df.iloc[row, rxn_rule_score_index].reshape(1, -1)
-            rxns_list.extend([rxn_fp, rxn_dg, rxn_rule_score])
-            # print(rxn_rule_score)
+            pathway_rxns = np.concatenate(rxns_list, axis=1).reshape(1, -1)
+            pathway_dg = df.loc[row, "Pathway_Delta_G"].reshape(1, -1)
+            pathway_flux = df.loc[row, "Pathway_Flux"].reshape(1, -1)
+            pathway_score = df.loc[row, "Pathway_Score"].reshape(1, -1)
+            pathway_y = df.loc[row, "Round1_OR"].reshape(1, -1)
+            feature = np.concatenate(
+                (pathway_rxns, pathway_dg, pathway_flux, pathway_score, pathway_y),
+                axis=1,
+            )
+            dset.resize(dset.shape[0] + feature.shape[0], axis=0)
+            dset[-feature.shape[0] :] = feature
+            # print(pathway_flux)
+        result = dset[:]
 
-        pathway_rxns = np.concatenate(rxns_list, axis=1).reshape(1, -1)
-        pathway_dg = df.loc[row, "Pathway_Delta_G"].reshape(1, -1)
-        pathway_flux = df.loc[row, "Pathway_Flux"].reshape(1, -1)
-        pathway_score = df.loc[row, "Pathway_Score"].reshape(1, -1)
-        pathway_y = df.loc[row, "Round1_OR"].reshape(1, -1)
-        feature = np.concatenate(
-            (pathway_rxns, pathway_dg, pathway_flux, pathway_score, pathway_y), axis=1
-        )
-        dset.resize(dset.shape[0] + feature.shape[0], axis=0)
-        dset[-feature.shape[0] :] = feature
-        # print(pathway_flux)
-
-    return dset
+    return result
 
 
 def transform_to_matrix(dset, model_file):
@@ -251,7 +263,8 @@ def transform_to_matrix(dset, model_file):
     if not os_path.exists(model_file):
         sys_exit(f"{model_file} not found")
     else:
-        trained_model = pickle_load(open(model_file, "rb"))
+        with open(model_file, "rb") as f:
+            trained_model = pickle_load(f)
 
     dset_matrix = DMatrix(X_test, label=Y_test)
     trained_model_score = trained_model.predict(dset_matrix)
@@ -281,7 +294,8 @@ def score_prediction(
         modelfile = os_path.join(models_path, f"model{model_number}.pickle")
         if not os_path.exists(modelfile):
             sys_exit("modelfile not found")
-        model = pickle_load(open(modelfile, "rb"))  ############
+        with open(modelfile, "rb") as f:
+            model = pickle_load(f)  ############
         df_test_matrix = transform_to_matrix(
             features_dset_pred, os_path.join(models_path, "model.pickle")
         )
@@ -391,24 +405,27 @@ def predict_score(
     # data_train_file: str,
     # models_path: str,
     no_of_rxns_thres: int,
-    logger: Logger = getLogger(__name__),
+    logger: Logger | None = None,
 ) -> float:
     # ) -> List[float]:
 
-    with NamedTemporaryFile(mode="w", delete=False) as rf:
-        with NamedTemporaryFile(mode="w", delete=False) as pf:
-            format_files(
-                pathway=pathway, reactions_fp=rf, pathways_fp=pf, logger=logger
-            )
-            rf.close()
-            pf.close()
-            features_dset_train = load_training_data(__DATA_TRAIN_FILE)
-            score = _predict_score(
-                rf.name, pf.name, __MODELS_PATH, features_dset_train, no_of_rxns_thres
-            )[0]
-            remove(rf.name)
-            remove(pf.name)
-            return score
+    if logger is None:
+        logger = getLogger(__name__)
+
+    with (
+        NamedTemporaryFile(mode="w", delete=False) as rf,
+        NamedTemporaryFile(mode="w", delete=False) as pf,
+    ):
+        format_files(pathway=pathway, reactions_fp=rf, pathways_fp=pf, logger=logger)
+        rf.close()
+        pf.close()
+        features_dset_train = load_training_data(__DATA_TRAIN_FILE)
+        score = _predict_score(
+            rf.name, pf.name, __MODELS_PATH, features_dset_train, no_of_rxns_thres
+        )[0]
+        remove(rf.name)
+        remove(pf.name)
+        return score
 
 
 def format_files(
@@ -416,8 +433,11 @@ def format_files(
     pathway: rpPathway,
     reactions_fp,
     pathways_fp,
-    logger: Logger = getLogger(__name__),
+    logger: Logger | None = None,
 ) -> None:
+
+    if logger is None:
+        logger = getLogger(__name__)
 
     # PATHWAYS FILE
     columns = [
@@ -521,7 +541,8 @@ def format_files(
     #   '[H]O[H].[H]Oc1c([H])c([H])c(C([H])([H])[H])c([H])c1[H]>>[H]Oc1c([H])c([H])c(C([H])=O)c([H])c1[H]'
     # ]
     rxn_i = 1
-    for rxn_id in rxn_lst:
+
+    for i, rxn_id in enumerate(rxn_lst):
         rxn = pathway.get_reaction(rxn_id)
         data = {}
         data[""] = i
@@ -529,8 +550,9 @@ def format_files(
         data["Pathway Name"] = pathway.get_id()
         data["Reaction Rule"] = ">>".join(rxn.get_smiles().split(">>")[::-1])
         data["Rule Score"] = rxn.get_rule_score()
+
         reactions_fp.write(",".join([str(data.get(c, "")) for c in columns]) + "\n")
-        i += 1
+
         rxn_i += 1
 
 
