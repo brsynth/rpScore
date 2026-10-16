@@ -1,3 +1,4 @@
+import os
 from logging import Logger, getLogger
 from os import path as os_path
 from os import remove
@@ -155,100 +156,105 @@ def features_encoding(df, flag):
     print("Encodining features for the Test set......")
     # temp_f_name = str(uuid4())
     number = rxn_len * no_of_rxns + pathway_len + y_len
-    with (
-        NamedTemporaryFile(suffix=".h5") as temp_file,
-        h5py_File(temp_file.name, "w") as f,
-    ):
-        dset = f.create_dataset(
-            "data",
-            (0, number),
-            dtype="i2",
-            maxshape=(None, number),
-            compression="gzip",
-        )
+    with NamedTemporaryFile(suffix=".h5", delete=False) as temp_file:
+        temp_file_path = temp_file.name
 
-        for row in tqdm(range(len(df))):
-            pathway_rxns = np.array([]).reshape(0, rxn_len * no_of_rxns)
-            rxns_list = []
-            for rxn_no_ in range(no_of_rxns):
+    try:
+        with h5py_File(temp_file_path, "w") as f:
+            number = rxn_len * no_of_rxns + pathway_len + y_len
+            dset = f.create_dataset(
+                "data",
+                (0, number),
+                dtype="i2",
+                maxshape=(None, number),
+                compression="gzip",
+            )
 
-                rxn_smiles_index = rxn_no_ * 3
-                rxn_dg_index = (rxn_no_ + 1) * 3 - 2
-                rxn_rule_score_index = (rxn_no_ + 1) * 3 - 1
+            for row in tqdm(range(len(df))):
+                pathway_rxns = np.array([]).reshape(0, rxn_len * no_of_rxns)
+                rxns_list = []
+                for rxn_no_ in range(no_of_rxns):
 
-                if str(df.iloc[row, rxn_smiles_index]) != "0":
-                    # print(df.iloc[row , rxn_smiles_index])
-                    rxn_smiles = df.iloc[row, rxn_smiles_index]
-                    rxn_smiles_list = rxn_smiles.split(">>")
-                    # print(len(rxn_smiles_list))
+                    rxn_smiles_index = rxn_no_ * 3
+                    rxn_dg_index = (rxn_no_ + 1) * 3 - 2
+                    rxn_rule_score_index = (rxn_no_ + 1) * 3 - 1
 
-                    if len(rxn_smiles_list) == 2:
+                    if str(df.iloc[row, rxn_smiles_index]) != "0":
+                        # print(df.iloc[row , rxn_smiles_index])
+                        rxn_smiles = df.iloc[row, rxn_smiles_index]
+                        rxn_smiles_list = rxn_smiles.split(">>")
+                        # print(len(rxn_smiles_list))
 
-                        sub_smiles = rxn_smiles_list[0]
-                        sub_m = Chem.MolFromSmiles(sub_smiles)
-                        # print(m)
-                        if sub_m is not None:
-                            sub_fp = AllChem.GetMorganFingerprintAsBitVect(
-                                sub_m, 2, nBits=2048
-                            )
-                            sub_arr = np.array([])
-                            DataStructs.ConvertToNumpyArray(sub_fp, sub_arr)
-                            sub_fp = sub_arr.reshape(1, -1)
-                        else:
-                            sub_fp = np.zeros((1, 2048))
+                        if len(rxn_smiles_list) == 2:
 
-                        pro_smiles = rxn_smiles_list[1]
-                        pro_m = Chem.MolFromSmiles(pro_smiles)
-                        # print(m)
-                        if pro_m is not None:
+                            sub_smiles = rxn_smiles_list[0]
+                            sub_m = Chem.MolFromSmiles(sub_smiles)
+                            # print(m)
+                            if sub_m is not None:
+                                sub_fp = AllChem.GetMorganFingerprintAsBitVect(
+                                    sub_m, 2, nBits=2048
+                                )
+                                sub_arr = np.array([])
+                                DataStructs.ConvertToNumpyArray(sub_fp, sub_arr)
+                                sub_fp = sub_arr.reshape(1, -1)
+                            else:
+                                sub_fp = np.zeros((1, 2048))
+
+                            pro_smiles = rxn_smiles_list[1]
+                            pro_m = Chem.MolFromSmiles(pro_smiles)
+                            # print(m)
+                            if pro_m is not None:
+                                pro_fp = AllChem.GetMorganFingerprintAsBitVect(
+                                    pro_m, 2, nBits=2048
+                                )
+                                pro_arr = np.zeros((1,))
+                                DataStructs.ConvertToNumpyArray(pro_fp, pro_arr)
+                                pro_fp = pro_arr.reshape(1, -1)
+                            else:
+                                pro_fp = np.zeros((1, 2048))
+                            rxn_fp = np.concatenate([sub_fp, pro_fp]).reshape(1, -1)
+
+                        elif len(rxn_smiles_list) < 2:
+
+                            pro_smiles = rxn_smiles_list[0]
+                            # print(pro_smiles)
+                            pro_m = Chem.MolFromSmiles(pro_smiles)
+                            # print(pro_m)
                             pro_fp = AllChem.GetMorganFingerprintAsBitVect(
-                                pro_m, 2, nBits=2048
-                            )
+                                pro_m, 2, nBits=fp_len
+                            )  # JLF: not good !!
                             pro_arr = np.zeros((1,))
                             DataStructs.ConvertToNumpyArray(pro_fp, pro_arr)
-                            pro_fp = pro_arr.reshape(1, -1)
+                            rxn_fp = pro_arr.reshape(1, -1)
                         else:
-                            pro_fp = np.zeros((1, 2048))
-                        rxn_fp = np.concatenate([sub_fp, pro_fp]).reshape(1, -1)
+                            print(
+                                "There is a problem with the number of components in the reaction"
+                            )
 
-                    elif len(rxn_smiles_list) < 2:
-
-                        pro_smiles = rxn_smiles_list[0]
-                        # print(pro_smiles)
-                        pro_m = Chem.MolFromSmiles(pro_smiles)
-                        # print(pro_m)
-                        pro_fp = AllChem.GetMorganFingerprintAsBitVect(
-                            pro_m, 2, nBits=fp_len
-                        )  # JLF: not good !!
-                        pro_arr = np.zeros((1,))
-                        DataStructs.ConvertToNumpyArray(pro_fp, pro_arr)
-                        rxn_fp = pro_arr.reshape(1, -1)
                     else:
-                        print(
-                            "There is a problem with the number of components in the reaction"
-                        )
+                        rxn_fp = np.zeros(fp_len).reshape(1, -1)
 
-                else:
-                    rxn_fp = np.zeros(fp_len).reshape(1, -1)
+                    rxn_dg = df.iloc[row, rxn_dg_index].reshape(1, -1)
+                    rxn_rule_score = df.iloc[row, rxn_rule_score_index].reshape(1, -1)
+                    rxns_list.extend([rxn_fp, rxn_dg, rxn_rule_score])
+                    # print(rxn_rule_score)
 
-                rxn_dg = df.iloc[row, rxn_dg_index].reshape(1, -1)
-                rxn_rule_score = df.iloc[row, rxn_rule_score_index].reshape(1, -1)
-                rxns_list.extend([rxn_fp, rxn_dg, rxn_rule_score])
-                # print(rxn_rule_score)
+                pathway_rxns = np.concatenate(rxns_list, axis=1).reshape(1, -1)
+                pathway_dg = df.loc[row, "Pathway_Delta_G"].reshape(1, -1)
+                pathway_flux = df.loc[row, "Pathway_Flux"].reshape(1, -1)
+                pathway_score = df.loc[row, "Pathway_Score"].reshape(1, -1)
+                pathway_y = df.loc[row, "Round1_OR"].reshape(1, -1)
+                feature = np.concatenate(
+                    (pathway_rxns, pathway_dg, pathway_flux, pathway_score, pathway_y),
+                    axis=1,
+                )
+                dset.resize(dset.shape[0] + feature.shape[0], axis=0)
+                dset[-feature.shape[0] :] = feature
+                # print(pathway_flux)
+            result = dset[:]
 
-            pathway_rxns = np.concatenate(rxns_list, axis=1).reshape(1, -1)
-            pathway_dg = df.loc[row, "Pathway_Delta_G"].reshape(1, -1)
-            pathway_flux = df.loc[row, "Pathway_Flux"].reshape(1, -1)
-            pathway_score = df.loc[row, "Pathway_Score"].reshape(1, -1)
-            pathway_y = df.loc[row, "Round1_OR"].reshape(1, -1)
-            feature = np.concatenate(
-                (pathway_rxns, pathway_dg, pathway_flux, pathway_score, pathway_y),
-                axis=1,
-            )
-            dset.resize(dset.shape[0] + feature.shape[0], axis=0)
-            dset[-feature.shape[0] :] = feature
-            # print(pathway_flux)
-        result = dset[:]
+    finally:
+        os.unlink(temp_file_path)
 
     return result
 
