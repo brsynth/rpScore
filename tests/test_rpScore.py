@@ -1,11 +1,12 @@
-from unittest import TestCase
 from os import path as os_path
-from rplibs import rpPathway, rpSBML
+from unittest import TestCase
+
 from brs_utils import (
     create_logger,
 )
+from rplibs import rpPathway, rpSBML
 
-from rpscore.rpscore import predict_score, ThermoError, FBAError
+from rpscore.rpscore import FBAError, ThermoError, predict_score
 
 
 class Test_rpScore(TestCase):

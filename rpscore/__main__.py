@@ -1,12 +1,18 @@
-from os import path as os_path, makedirs as os_makedirs
-from .rpscore import predict_score, ThermoError, FBAError
-from .Args import add_arguments
-from ._version import __version__
+import sys
+from os import makedirs as os_makedirs
+from os import path as os_path
+
 from brs_utils import (
-    init as init_logger,
     build_args_parser,
 )
+from brs_utils import (
+    init as init_logger,
+)
 from rplibs import rpPathway
+
+from ._version import __version__
+from .args import add_arguments
+from .rpscore import FBAError, ThermoError, predict_score
 
 
 def entry_point():
@@ -32,10 +38,10 @@ def entry_point():
         )
     except ThermoError as e:
         logger.error(e)
-        exit(1)
+        sys.exit(1)
     except FBAError as e:
         logger.error(e)
-        exit(2)
+        sys.exit(2)
 
     # Write results into the pathway
     pathway.set_global_score(score)
